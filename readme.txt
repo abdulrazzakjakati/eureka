@@ -1,0 +1,1 @@
+Eureka server for food delivery app.
