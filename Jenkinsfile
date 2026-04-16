@@ -9,7 +9,7 @@ pipeline {
         MANIFEST_PATH          = "helm/restaurant-microservices-project/eureka-service/values.yaml"
 
         DOCKERHUB_CREDENTIALS  = credentials('DOCKER_HUB_CREDENTIAL')
-        DOCKER_IMAGE           = "${DOCKERHUB_USERNAME}/${APP_NAME}:latest"
+        DOCKER_IMAGE           = "${DOCKERHUB_USERNAME}/${APP_NAME}:${VERSION}"
     }
 
     stages {
@@ -38,6 +38,27 @@ pipeline {
                     # Cleanup builder
                     docker buildx rm multiarch-builder || true
                 '''
+            }
+        }
+
+        stage('Update GitOps Manifests') {
+            steps {
+                checkout scmGit(
+                        branches: [[name: "*/${GITOPS_BRANCH}"]],
+                        userRemoteConfigs: [[credentialsId: 'git-ssh', url: "${GITOPS_REPO_URL}"]]
+                )
+                script {
+                    sh """
+                        sed -i "s|image:.*|image: ${DOCKER_IMAGE}|" ${MANIFEST_PATH}
+                        git config user.name "Jenkins"
+                        git config user.email "jenkins@local"
+                        git add ${MANIFEST_PATH}
+                        git commit -m "Update ${APP_NAME} to v${VERSION}"
+                    """
+                    sshagent(['git-ssh']) {
+                        sh "git push origin HEAD:${GITOPS_BRANCH}"
+                    }
+                }
             }
         }
 
