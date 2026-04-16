@@ -12,17 +12,7 @@ pipeline {
         DOCKER_IMAGE           = "${DOCKERHUB_USERNAME}/${APP_NAME}:latest"
     }
 
-    tools {
-        maven 'Maven'
-    }
-
     stages {
-        stage('Maven Build') {
-            steps {
-                sh 'mvn clean package -DskipTests'
-            }
-        }
-
         stage('Docker Build & Push') {
             steps {
                 sh '''
