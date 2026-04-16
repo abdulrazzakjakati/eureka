@@ -1,41 +1,31 @@
-
-# Stage 1: Builder
-# Use Maven image with JDK 17 to build the application
-FROM maven:3.9.6-eclipse-temurin-17 AS builder
-# Set working directory
+# --- STAGE 1: Build JAR natively (fast) ---
+FROM --platform=$BUILDPLATFORM maven:3.9.6-eclipse-temurin-17 AS builder
 WORKDIR /build
-# Copy source code and pom.xml
+
+# Cache dependencies
 COPY pom.xml .
-# Copy source files
+RUN mvn dependency:go-offline -B
+
+# Compile code
 COPY src ./src
-# Build the application and skip tests
 RUN mvn clean package -DskipTests
 
-# Stage 2: Runtime
-# Use a lightweight JRE image
-FROM eclipse-temurin:17-jre
-# Set working directory
+# --- STAGE 2: Multi-arch Runtime ---
+FROM eclipse-temurin:17-jre-alpine
 WORKDIR /app
 
-# Use non-root user (DEBIAN SYNTAX - fixed!)
-RUN groupadd -r appgroup && \
-    useradd --no-log-init -r -g appgroup appuser && \
-    mkdir -p /app && \
-    chown -R appuser:appgroup /app
+# Alpine uses 'addgroup' and 'adduser'
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 
-# Copy the built jar from the builder stage (before USER switch)
+# Copy JAR from builder
 COPY --from=builder /build/target/*.jar app.jar
 RUN chown appuser:appgroup /app/app.jar
 
-# Switch to non-root user
 USER appuser
-
-# Expose application port
 EXPOSE 8761
 
-# Add health check
+# Healthcheck (Note: Alpine needs 'wget' or 'curl' installed to work)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
-  CMD curl -f http://localhost:8761/actuator/health || exit 1
+  CMD wget --quiet --tries=1 --spider http://localhost:8761/actuator/health || exit 1
 
-# Define the entry point for the container
 ENTRYPOINT ["java", "-jar", "app.jar"]

@@ -9,6 +9,7 @@ pipeline {
         MANIFEST_PATH          = "helm/restaurant-microservices-project/eureka-service/values.yaml"
 
         DOCKERHUB_CREDENTIALS  = credentials('DOCKER_HUB_CREDENTIAL')
+        VERSION               = "${env.BUILD_ID}"
         DOCKER_IMAGE           = "${DOCKERHUB_USERNAME}/${APP_NAME}:${VERSION}"
     }
 
@@ -29,11 +30,12 @@ pipeline {
                     docker buildx create --name multiarch-builder --use --bootstrap || docker buildx use multiarch-builder
 
                     # Build and push for both amd64 and arm64
-                    docker buildx build \
-                        --platform linux/amd64,linux/arm64 \
-                        --tag ${DOCKER_IMAGE} \
-                        --push \
-                        .
+                    docker buildx build \\
+                        --platform linux/amd64,linux/arm64 \\
+                        --cache-from=type=registry,ref=${DOCKERHUB_USERNAME}/${APP_NAME}:buildcache \\
+                        --cache-to=type=registry,ref=${DOCKERHUB_USERNAME}/${APP_NAME}:buildcache,mode=max \\
+                        --tag ${DOCKER_IMAGE} \\
+                        --push .
 
                     # Cleanup builder
                     docker buildx rm multiarch-builder || true
