@@ -14,8 +14,8 @@ RUN mvn clean package -DskipTests
 FROM eclipse-temurin:17-jre
 WORKDIR /app
 
-# Alpine uses 'addgroup' and 'adduser'
-RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+# ✅ FIXED: Using Debian/Ubuntu syntax for user creation
+RUN groupadd -r appgroup && useradd -r -g appgroup appuser
 
 # Copy JAR from builder
 COPY --from=builder /build/target/*.jar app.jar
