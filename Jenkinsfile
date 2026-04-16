@@ -4,16 +4,11 @@ pipeline {
     environment {
         DOCKERHUB_USERNAME     = 'abdulrazzakjakati'
         APP_NAME               = 'food-delivery-eureka-service'
-//        GITOPS_REPO_URL        = 'git@github.com:abdulrazzakjakati/deployment.git'
+        GITOPS_REPO_URL        = 'git@github.com:abdulrazzakjakati/deployment.git'
         GITOPS_BRANCH          = 'master'
         MANIFEST_PATH          = "helm/restaurant-microservices-project/eureka-service/values.yaml"
-//        SONAR_PROJECT_KEY      = 'com.codeddecode:eureka'
-//        SONAR_URL              = 'http://140.245.14.252:8761'
-//        COVERAGE_THRESHOLD     = '50.0'
 
         DOCKERHUB_CREDENTIALS  = credentials('DOCKER_HUB_CREDENTIAL')
-//        SONAR_TOKEN            = credentials('sonar-token')
-//        VERSION                = "${env.BUILD_ID}"
         DOCKER_IMAGE           = "${DOCKERHUB_USERNAME}/${APP_NAME}:latest"
     }
 
@@ -37,8 +32,21 @@ pipeline {
                     echo "Dockerfile exists:"
                     test -f Dockerfile && echo "✓ Found" || echo "✗ Missing!"
 
-                    docker build -t ${DOCKER_IMAGE} .
-                    docker push ${DOCKER_IMAGE}
+                    # Login to DockerHub
+                    echo "$DOCKERHUB_CREDENTIALS_PSW" | docker login -u "$DOCKERHUB_CREDENTIALS_USR" --password-stdin
+
+                    # Setup buildx for multi-arch support
+                    docker buildx create --name multiarch-builder --use --bootstrap || docker buildx use multiarch-builder
+
+                    # Build and push for both amd64 and arm64
+                    docker buildx build \
+                        --platform linux/amd64,linux/arm64 \
+                        --tag ${DOCKER_IMAGE} \
+                        --push \
+                        .
+
+                    # Cleanup builder
+                    docker buildx rm multiarch-builder || true
                 '''
             }
         }
