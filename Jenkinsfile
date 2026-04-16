@@ -18,10 +18,10 @@ pipeline {
             steps {
                 sh '''
                     # Login to DockerHub
-                    echo "$DOCKERHUB_CREDENTIALS_PSW" | docker login -u "$DOCKERHUB_CREDENTIALS_USR" --password-stdin [cite: 9]
+                    echo "$DOCKERHUB_CREDENTIALS_PSW" | docker login -u "$DOCKERHUB_CREDENTIALS_USR" --password-stdin
 
                     # Setup buildx
-                    docker buildx create --name multiarch-builder --use --bootstrap || docker buildx use multiarch-builder [cite: 10]
+                    docker buildx create --name multiarch-builder --use --bootstrap || docker buildx use multiarch-builder
 
                     # Build and push with remote caching to stay within Free Tier time limits
                     docker buildx build \\
@@ -48,7 +48,7 @@ pipeline {
                         git config user.name "Jenkins"
                         git config user.email "jenkins@local"
                         git add ${MANIFEST_PATH}
-                        git commit -m "Update ${APP_NAME} to v${VERSION}" [cite: 16]
+                        git commit -m "Update ${APP_NAME} to v${VERSION}"
                     """
                     sshagent(['git-ssh']) {
                         sh "git push origin HEAD:${GITOPS_BRANCH}"
